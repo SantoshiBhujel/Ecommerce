@@ -1,0 +1,83 @@
+<?php
+
+namespace App\Notifications;
+
+use App\Models\Order;
+use Illuminate\Bus\Queueable;
+use Gloudemans\Shoppingcart\Facades\Cart;
+use Illuminate\Notifications\Notification;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\MailMessage;
+
+class OrderNotification extends Notification implements ShouldQueue
+{
+    use Queueable;
+    
+    public $order;
+    /**
+     * Create a new notification instance.
+     *
+     * @return void
+     */
+    public function __construct(Order $order)
+    {
+        $this->order= $order;
+    }
+
+    /**
+     * Get the notification's delivery channels.
+     *
+     * @param  mixed  $notifiable
+     * @return array
+     */
+    public function via($notifiable)
+    {
+        return ['mail','database'];
+    }
+
+    /**
+     * Get the mail representation of the notification.
+     *
+     * @param  mixed  $notifiable
+     * @return \Illuminate\Notifications\Messages\MailMessage
+     */
+    public function toMail($notifiable)
+    {
+        return (new MailMessage)->from($this->order->email, $this->order->name)
+                                ->subject('Order Placed')
+                                ->markdown('mails.orderNotification',[ 'order'=>$this->order]);
+    }
+
+    /**
+     * Get the array representation of the notification.
+     *
+     * @param  mixed  $notifiable
+     * @return array
+    */
+
+    public function toDatabase($notifiable)
+    {
+       $contents= Cart::content()->map(function($item)
+        {
+            return 'Item:'.$item->model->name.', Qty:'. $item->qty;
+        })->values()->toJson();
+       
+        return[
+            'by' => $this->order->name,
+            'product' => $contents
+        ];
+    }
+
+    /**
+     * Get the array representation of the notification.
+     *
+     * @param  mixed  $notifiable
+     * @return array
+     */
+    public function toArray($notifiable)
+    {
+        return [
+            //
+        ];
+    }
+}
